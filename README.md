@@ -1,138 +1,143 @@
-# CustomTone: Customizable Music Generation System
+# Custom Music Generation Model
 
-![CustomTone Logo](https://img.shields.io/badge/CustomTone-Music%20Generation-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-
-## Overview
-
-CustomTone is an open-source music generation system inspired by SUNO but with enhanced customization capabilities. Unlike other music generation systems that produce a single audio file, CustomTone provides:
-
-1. **Full Song Generation**: Create complete songs from text prompts or lyrics
-2. **Stem Separation**: Access individual instrument tracks (vocals, drums, bass, other)
-3. **MIDI Transcription**: Convert audio to MIDI for note-level editing
-4. **Customizable Mixing**: Add, remove, or modify individual instruments
-5. **Source File Access**: Edit your music like a designer edits in Adobe Illustrator
-
-## Architecture
-
-CustomTone uses a modular architecture with three main components:
-
-1. **Generation**: YuE or AudioCraft/MusicGen for high-quality music generation
-2. **Separation**: Demucs for splitting audio into instrument stems
-3. **Transcription**: BasicPitch for converting audio to editable MIDI
-
-![Architecture Diagram](https://mermaid.ink/img/pako:eNp1kU1PwzAMhv9KlBOgSf3YpE1w2A6cEBJiB8QOaRo2o6ZJlTgwTeq_4-4DwYYvsd-8fmwnB2WNRpWpnT0YfHK4Jvhw3pAJZOkFXOGWnIcXbMHBGjsKYIAtNOQpwJbcAB15ik_Yk6MtmR4-yVuADjRZCmvoKKyxI9-DxY7sBpZkLQxkLXXkLDgKa-zIW-gpbLAn38OGwhp7Cj1YCmscyFsYKKxxoNDDQGGNkcIGRwpr3FHYwI7CGiOFDY4UNjhS2MBI3sKewgYjhQ3uKWxwT2EDe_IWDhQ2eKCwgQOFDRzIWzhS2OCRwgYfKWzwicIGn8lbOFLY4DOFDb5Q2OALhQ2-UtjgK4UNvpG3cKKwwTcKG3ynsIEThQ1-kLdwprDBDwobPFPY4CeFDX6St_CLwgZ_KGzwl8IGfylscKawwV_yFv5R2OCZwgbPFDb4R2GD_8hbOFPY4D-FDf5T2OCZwgb_yVv4D5ZV0Qs?type=png)
+This project implements a custom music generation model that allows for separate instrument tracks and customization, similar to SUNO but with more control over individual elements.
 
 ## Features
 
-- **Text-to-Music Generation**: Create songs from text descriptions or lyrics
-- **Style Control**: Specify genre, mood, tempo, and instrumentation
-- **Stem Access**: Get separate tracks for vocals, drums, bass, and other instruments
-- **MIDI Export**: Edit notes, timing, and pitch in any DAW
-- **Customizable Mixing**: Select which instruments to include in the final mix
-- **Kaggle Integration**: Optimized to run on Kaggle's GPU environment
-- **Gradio Interface**: User-friendly web interface for easy interaction
+- Generate music with separate instrument tracks (drums, bass, piano, guitar, strings, synth, vocals)
+- Customize each instrument track independently
+- Adjust volume levels for each instrument
+- Save and load "source files" that can be edited later
+- Train on your own music collection
+- Run in Google Colab with minimal setup
+
+## How It Works
+
+The model uses a Variational Autoencoder (VAE) architecture with instrument-specific conditioning to generate music. The key components are:
+
+1. **Audio Processing**: Convert audio files to mel spectrograms and back
+2. **Instrument Separation**: Separate audio into different instrument stems
+3. **Latent Space**: Encode music into a compact latent representation
+4. **Source File Format**: Store latent vectors for each instrument track
+5. **Customization**: Modify instrument tracks by manipulating latent vectors
+
+## Getting Started
+
+### Running in Google Colab
+
+1. Upload the `custom_model.py` file to Google Colab
+2. Run the following code:
+
+```python
+# Import the model
+from custom_model import MusicGenerationConfig, MusicGenerator, MusicSourceFile
+
+# Create a new music generator
+config = MusicGenerationConfig()
+generator = MusicGenerator(config)
+
+# Create a new source file with random instruments
+source_file = generator.create_source_file(random_seed=42)
+
+# Modify instruments as desired
+source_file = generator.modify_instrument(source_file, "drums", "randomize", 0.2)
+source_file = generator.modify_instrument(source_file, "bass", "amplify", 0.3)
+
+# Adjust volumes
+source_file.set_instrument_volume("drums", 0.8)
+source_file.set_instrument_volume("bass", 1.2)
+
+# Render audio
+combined, stems = generator.render_audio(source_file)
+
+# Play the combined audio
+from IPython.display import Audio
+Audio(combined, rate=config.sample_rate)
+
+# Save the source file for later editing
+source_file.save("my_song.msf")
+
+# Save the audio
+import soundfile as sf
+sf.write("my_song.wav", combined, config.sample_rate)
+```
+
+### Training on Your Own Music
+
+To train the model on your own music collection:
+
+```python
+from custom_model import MusicGenerationConfig, MusicGenerator
+import glob
+
+# Get a list of audio files
+audio_files = glob.glob("path/to/your/music/*.mp3")
+
+# Create a new music generator
+config = MusicGenerationConfig()
+generator = MusicGenerator(config)
+
+# Train the model
+generator.train(
+    audio_files,
+    num_epochs=100,
+    learning_rate=3e-4,
+    batch_size=16
+)
+
+# Save the trained model
+generator.save_model("my_trained_model.pt")
+```
+
+## Customization Options
+
+### Instrument Modifications
+
+- **Randomize**: Add random noise to the instrument's latent vector
+- **Interpolate**: Blend the instrument with a random variation
+- **Amplify**: Increase the intensity of the instrument
+- **Attenuate**: Decrease the intensity of the instrument
+
+### Volume Control
+
+Adjust the volume of each instrument independently:
+
+```python
+source_file.set_instrument_volume("drums", 0.8)  # 80% volume
+source_file.set_instrument_volume("bass", 1.2)   # 120% volume
+source_file.set_instrument_volume("vocals", 0.0) # Mute vocals
+```
+
+### Adding/Removing Instruments
+
+```python
+# Remove an instrument
+source_file.remove_instrument("vocals")
+
+# Add a new instrument (from another source file)
+other_source = generator.create_source_file()
+source_file.add_instrument("vocals", other_source.latent_vectors["vocals"])
+```
 
 ## Requirements
 
-- Python 3.8+
-- PyTorch 2.0+
-- CUDA-compatible GPU (recommended)
-- 8+ GB VRAM for YuE model
-- 4+ GB VRAM for MusicGen model
+- Python 3.6+
+- PyTorch
+- Torchaudio
+- Librosa
+- Matplotlib
+- Soundfile
 
-## Quick Start
+## Limitations
 
-1. Clone this repository:
+- The current implementation uses a simplified instrument separation approach
+- For production use, you would want to integrate a more sophisticated source separation model like Spleeter or Demucs
+- Training requires a substantial amount of data for best results
 
-```bash
-git clone https://github.com/raheesahmed/CustomTone.git
-cd CustomTone
-```
+## Future Improvements
 
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Launch the Gradio interface:
-
-```bash
-python app.py
-```
-
-4. For Kaggle:
-   - Upload the notebook `CustomTone_Kaggle.ipynb`
-   - Enable GPU acceleration
-   - Run all cells
-
-## Usage
-
-### Basic Usage
-
-1. Enter lyrics or a text description
-2. Select a musical style
-3. Generate the full song
-4. Access individual stems (vocals, drums, bass, other)
-5. Download stems or MIDI files for editing
-6. Recombine selected stems for a customized mix
-
-### Advanced Usage
-
-- **MIDI Editing**: Import MIDI files into your DAW for detailed editing
-- **Custom Training**: Train the model on your own music collection (see docs/training.md)
-- **API Integration**: Use the Python API for batch processing (see docs/api.md)
-
-## Project Structure
-
-```
-CustomTone/
-├── app.py                  # Gradio web interface
-├── main.py                 # Command-line interface
-├── config.yaml             # Configuration settings
-├── requirements.txt        # Dependencies
-├── CustomTone_Kaggle.ipynb # Kaggle notebook
-├── model/
-│   ├── music_generator.py  # Music generation module
-│   ├── stem_separator.py   # Audio separation module
-│   ├── midi_transcriber.py # Audio-to-MIDI conversion
-│   └── utils.py            # Utility functions
-├── data/
-│   └── examples/           # Example prompts and outputs
-└── docs/
-    ├── api.md              # API documentation
-    └── training.md         # Custom training guide
-```
-
-## Models
-
-CustomTone supports multiple music generation models:
-
-1. **YuE**: Open-source full-song generation model (similar to SUNO)
-2. **MusicGen**: Meta's AudioCraft music generation model
-3. **Magenta**: Google's music generation framework (optional)
-
-For stem separation, we use:
-
-- **Demucs**: Facebook's high-quality audio source separation
-- **Spleeter**: Deezer's stem separator (alternative)
-
-For MIDI transcription:
-
-- **BasicPitch**: Spotify's audio-to-MIDI converter
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [YuE](https://github.com/multimodal-art-projection/YuE) by Multimodal Art Projection team
-- [AudioCraft](https://github.com/facebookresearch/audiocraft) by Meta AI
-- [Demucs](https://github.com/facebookresearch/demucs) by Facebook Research
-- [BasicPitch](https://github.com/spotify/basic-pitch) by Spotify
+- Integration with professional source separation models
+- More sophisticated latent space manipulation
+- User interface for visual editing
+- Support for MIDI import/export
+- Fine-grained control over musical elements (rhythm, harmony, melody)
